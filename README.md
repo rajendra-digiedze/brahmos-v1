@@ -1,4 +1,4 @@
-# brahmos-v1 — dZshield SOC Dashboard
+# brahmos-v1 — SOC Dashboard
 
 FastAPI + SQLite ingest, React UI, Qdrant + Gemini for High/Critical summaries and chat, optional n8n webhooks on **Critical** logs.
 
@@ -53,4 +53,4 @@ flowchart TD
   CH --> UI
 ```
 
-Docker/Linux uses synthetic logs. Set `SECURITY_ALERT_WEBHOOK_URL` for Critical webhooks. `GEMINI_API_KEY` enables embeddings and chat.
+Uses real firewall log traffic. Set `SECURITY_ALERT_WEBHOOK_URL` for Critical webhooks. `GEMINI_API_KEY` enables embeddings and chat.
