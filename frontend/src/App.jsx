@@ -579,7 +579,7 @@ function App() {
         {/* Integrations Panel */}
         <div className="bg-slate-900 rounded-xl border border-slate-800 shadow-xl overflow-hidden flex flex-col h-[55vh] p-4 space-y-4">
           <h2 className="text-lg font-semibold flex items-center gap-2 text-slate-300 pb-2 border-b border-slate-800">
-            <Network className="w-5 h-5" /> Active Stack Topology
+          <Network className="w-5 h-5" /> Zero-Trust Topology
           </h2>
 
           <div className="space-y-3 flex-1 overflow-y-auto pr-2">
