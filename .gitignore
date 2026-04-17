@@ -63,12 +63,6 @@ backend/static/chart_*.png
 backend/static/report_*.pdf
 backend/inbox/*.eml
 
-# --- Local Windows / extracted binaries (use Docker or official install) ---
-qdrant-native/
-qdrant_extracted/
-node20.zip
-qdrant.zip
-
 # --- IDE & OS ---
 .idea/
 *.swp
