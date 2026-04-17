@@ -54,7 +54,9 @@ flowchart TD
   CH --> Q
 ```
 
-Uses real firewall log traffic. Set `SECURITY_ALERT_WEBHOOK_URL` for Critical webhooks. `GEMINI_API_KEY` enables embeddings and chat.
+
+
+
 
 ## Orchestration Diagram (Runtime Sequence)
 
