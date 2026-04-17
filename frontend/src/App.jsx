@@ -440,7 +440,7 @@ function App() {
         <div className="flex items-center gap-3">
           <ShieldAlert className="h-8 w-8 text-indigo-500" />
           <h1 className="text-2xl font-bold text-indigo-200">
-            dZshield Enterprise SOC Dashboard
+            BraHmos Enterprise SOC Dashboard
           </h1>
           {hasMaliciousAlert && (
             <div className="ml-4 flex items-center gap-2 px-3 py-1 bg-red-900/50 border border-red-500 rounded-full animate-pulse transition-all">
@@ -579,50 +579,50 @@ function App() {
         {/* Integrations Panel */}
         <div className="bg-slate-900 rounded-xl border border-slate-800 shadow-xl overflow-hidden flex flex-col h-[55vh] p-4 space-y-4">
           <h2 className="text-lg font-semibold flex items-center gap-2 text-slate-300 pb-2 border-b border-slate-800">
-            <Network className="w-5 h-5" /> Zero-Trust Topology
+            <Network className="w-5 h-5" /> Active Stack Topology
           </h2>
 
           <div className="space-y-3 flex-1 overflow-y-auto pr-2">
             <div className="bg-slate-950 p-3 rounded-lg border border-indigo-900/50 flex flex-col gap-1">
               <div className="flex justify-between items-center">
-                <span className="text-xs text-indigo-400 font-bold">L1: Infrastructure</span>
+                <span className="text-xs text-indigo-400 font-bold">L1: Log Source</span>
               </div>
-              <span className="text-sm text-slate-300 flex items-center gap-2"><Server className="w-3 h-3 text-green-400" /> Kubernetes / dZ GaaS</span>
+              <span className="text-sm text-slate-300 flex items-center gap-2"><Server className="w-3 h-3 text-green-400" /> Windows Firewall Log (pfirewall.log)</span>
             </div>
             <div className="bg-slate-950 p-3 rounded-lg border border-indigo-900/50 flex flex-col gap-1">
               <div className="flex justify-between items-center">
-                <span className="text-xs text-indigo-400 font-bold">L2: Data Platform</span>
+                <span className="text-xs text-indigo-400 font-bold">L2: Ingest Service</span>
+                <a href="http://localhost:8000/docs" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300" title="Open FastAPI Docs"><ExternalLink className="w-3 h-3" /></a>
               </div>
-              <span className="text-sm text-slate-300 flex items-center gap-2"><Database className="w-3 h-3 text-green-400" /> Apache NiFi / Atlas</span>
+              <span className="text-sm text-slate-300 flex items-center gap-2"><Activity className="w-3 h-3 text-green-400" /> FastAPI + Log Generator</span>
             </div>
             <div className="bg-slate-950 p-3 rounded-lg border border-indigo-900/50 flex flex-col gap-1">
               <div className="flex justify-between items-center">
-                <span className="text-xs text-indigo-400 font-bold">L3: Knowledge Base</span>
+                <span className="text-xs text-indigo-400 font-bold">L3: Storage</span>
                 <a href="http://localhost:6333/dashboard" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300" title="Open Qdrant Visualizer"><ExternalLink className="w-3 h-3" /></a>
               </div>
-              <span className="text-sm text-slate-300 flex items-center gap-2"><Database className="w-3 h-3 text-green-400" /> Qdrant / Neo4j Vectors</span>
+              <span className="text-sm text-slate-300 flex items-center gap-2"><Database className="w-3 h-3 text-green-400" /> SQLite Logs + Qdrant Vectors</span>
             </div>
             <div className="bg-slate-950 p-3 rounded-lg border border-indigo-900/50 flex flex-col gap-1">
               <div className="flex justify-between items-center">
-                <span className="text-xs text-indigo-400 font-bold">L4/L5: AI Matrix</span>
-                <a href="http://localhost:8000/docs" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300" title="Open AI LLMA/Mistral API"><ExternalLink className="w-3 h-3" /></a>
+                <span className="text-xs text-indigo-400 font-bold">L4: AI Processing</span>
               </div>
-              <span className="text-sm text-slate-300 flex items-center gap-2"><Brain className="w-3 h-3 text-green-400" /> LlamaIndex / LLMA Tools</span>
-              <span className="text-sm text-slate-300 flex items-center gap-2"><Brain className="w-3 h-3 text-green-400" /> LangGraph AI</span>
+              <span className="text-sm text-slate-300 flex items-center gap-2"><Brain className="w-3 h-3 text-green-400" /> Gemini Embeddings + Chat</span>
+              <span className="text-sm text-slate-300 flex items-center gap-2"><Brain className="w-3 h-3 text-green-400" /> LangChain Retrieval Flow</span>
             </div>
             <div className="bg-slate-950 p-3 rounded-lg border border-indigo-900/50 flex flex-col gap-1">
               <div className="flex justify-between items-center">
-                <span className="text-xs text-indigo-400 font-bold">L6: Orchestration</span>
+                <span className="text-xs text-indigo-400 font-bold">L5: Alerting</span>
                 <a href="http://localhost:5678" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300" title="Open n8n Interface"><ExternalLink className="w-3 h-3" /></a>
               </div>
-              <span className="text-sm text-slate-300 flex items-center gap-2"><Activity className="w-3 h-3 text-green-400" /> n8n Automation</span>
+              <span className="text-sm text-slate-300 flex items-center gap-2"><Activity className="w-3 h-3 text-green-400" /> n8n Webhook</span>
             </div>
             <div className="bg-slate-950 p-3 rounded-lg border border-indigo-900/50 flex flex-col gap-1">
               <div className="flex justify-between items-center">
-                <span className="text-xs text-indigo-400 font-bold">L7: Agent Web</span>
+                <span className="text-xs text-indigo-400 font-bold">L6: Frontend</span>
                 <a href="/" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300" title="Open Dashboard"><ExternalLink className="w-3 h-3" /></a>
               </div>
-              <span className="text-sm text-slate-300 flex items-center gap-2"><Shield className="w-3 h-3 text-green-400" /> Web Dashboard</span>
+              <span className="text-sm text-slate-300 flex items-center gap-2"><Shield className="w-3 h-3 text-green-400" /> React Dashboard + SOC Chat</span>
             </div>
           </div>
         </div>
@@ -709,7 +709,7 @@ function App() {
         <div className={`bg-slate-900 rounded-xl border border-slate-800 shadow-xl overflow-hidden flex flex-col ${isChatMaximized ? 'fixed inset-4 z-50 lg:inset-x-20 lg:inset-y-10' : 'h-[55vh]'}`}>
           <div className="p-4 border-b border-slate-800 bg-indigo-950/30 flex justify-between items-center">
             <h2 className="text-lg font-semibold flex items-center gap-2 text-indigo-300">
-              <MessageCircle className="w-5 h-5" /> Chat4ED Console
+              <MessageCircle className="w-5 h-5" /> BranHmos Console
             </h2>
             <div className="flex items-center gap-2">
               <button
@@ -731,7 +731,7 @@ function App() {
 
           <div className={`flex-1 overflow-y-auto p-4 space-y-4 ${isChatMaximized ? 'bg-slate-950' : ''}`}>
             <div className="bg-slate-800/50 rounded-lg p-3 text-sm text-slate-300 inline-block">
-              Welcome to the Chat4ED Analyst Console (Layer 7). My logic is governed by CrewAI orchestration and Mistral NLP models. How can I assist with your attack graph investigations today? You can ask me for reports on any timeframe!
+              Welcome to the BranHmos Console. My logic is governed by CrewAI orchestration and Mistral NLP models. How can I assist with your attack graph investigations today? You can ask me for reports on any timeframe!
             </div>
 
             {chatHistory.map((msg, i) => (
