@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   qdrant:
     image: qdrant/qdrant:latest
@@ -29,11 +27,24 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    volumes:
+      - backend_data:/app/data
+
+    env_file:
+      - ./backend/.env
     environment:
       - QDRANT_URL=http://qdrant:6333
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-} # Optional, defaults to empty if not provided. To use Gemini, provide it in .env or system env.
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - SQLITE_DB_PATH=/app/data/logs.db
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
     depends_on:
-      - qdrant
+      qdrant:
+        condition: service_started
 
   log_generator:
     build:
@@ -41,8 +52,10 @@ services:
       dockerfile: Dockerfile
     environment:
       - BACKEND_URL=http://backend:8000
+      - USE_SYNTHETIC_LOGS=1
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
   frontend:
     build:
@@ -54,3 +67,4 @@ services:
 volumes:
   qdrant_storage:
   n8n_data:
+  backend_data:

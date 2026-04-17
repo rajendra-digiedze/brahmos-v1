@@ -8,6 +8,7 @@ import uuid
 
 # Initialize Qdrant Client (Docker uses "qdrant:6333", local defaults to memory if needed)
 qdrant_url = os.environ.get("QDRANT_URL", "http://qdrant:6333")
+client = None
 try:
     client = QdrantClient(url=qdrant_url)
     client.create_collection(
@@ -15,13 +16,16 @@ try:
         vectors_config=VectorParams(size=768, distance=Distance.COSINE),
     )
 except Exception as e:
-    print(f"Failed to connect to Qdrant or create collection (it may already exist): {e}")
-    try:
-        # Fallback to local memory if docker is not running
-        client = QdrantClient(":memory:")
-        client.create_collection(collection_name="network_logs", vectors_config=VectorParams(size=768, distance=Distance.COSINE))
-    except Exception:
+    err = str(e).lower()
+    if client is not None and ("already exists" in err or "409" in err):
         pass
+    else:
+        print(f"Failed to connect to Qdrant or create collection (it may already exist): {e}")
+        try:
+            client = QdrantClient(":memory:")
+            client.create_collection(collection_name="network_logs", vectors_config=VectorParams(size=768, distance=Distance.COSINE))
+        except Exception:
+            client = None
 
 
 def get_llm_and_embeddings():

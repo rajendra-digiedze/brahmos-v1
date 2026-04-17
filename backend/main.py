@@ -1,16 +1,28 @@
-from fastapi import FastAPI, Depends, BackgroundTasks
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+# Load backend/.env first so SECURITY_ALERT_WEBHOOK_URL, GEMINI_API_KEY, etc. are available.
+load_dotenv(Path(__file__).resolve().parent / ".env")
+
+from fastapi import FastAPI, Depends, BackgroundTasks, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import datetime
 import os
 import smtplib
 from email.message import EmailMessage
+import re
 
-from database import get_db, LogEntry
+import notifications as security_notifications
+
+from database import get_db, LogEntry, User
 from agent import summarize_and_store_log, chat_with_agent
 from fastapi.staticfiles import StaticFiles
+from auth import get_current_user, hash_password, verify_password, create_access_token
 
 # Create static directory for reports
 static_dir = os.path.join(os.path.dirname(__file__), 'static')
@@ -36,9 +48,33 @@ class LogPayload(BaseModel):
 class ChatQuery(BaseModel):
     query: str
 
-def send_real_email(log_line: str, recipient: str):
+
+class RegisterPayload(BaseModel):
+    username: str
+    email: str
+    password: str
+
+
+class LoginPayload(BaseModel):
+    username_or_email: str
+    password: str
+
+def send_real_email(log_line: str, recipient: str, timeline: str = "", severity: str = ""):
+    src_ip, dst_ip, status, parsed_severity = security_notifications.parse_firewall_log_line(log_line)
+    ts = security_notifications.format_alert_timestamp(timeline or None)
+    alert_type = severity or parsed_severity or status or "unknown"
+    body = (
+        "🚨 CRITICAL ALERT: Malicious Activity Blocked\n\n"
+        f"Time (event): {ts}\n"
+        f"Attack Type: {alert_type}\n"
+        f"Source IP: {src_ip or 'unknown'}\n"
+        f"Destination IP: {dst_ip or 'unknown'}\n"
+        f"Status: {status or 'unknown'}\n\n"
+        f"Payload / log line:\n{log_line}\n\n"
+        "Automated Alert from dZshield Enterprise SOC"
+    )
     msg = EmailMessage()
-    msg.set_content(f"🚨 CRITICAL ALERT: Malicious Activity Blocked\n\nPayload Signature: {log_line}\n\nAutomated Alert from dZshield Enterprise SOC")
+    msg.set_content(body)
     msg['Subject'] = '🚨 CRITICAL MALICIOUS NETWORK ALERT'
     msg['From'] = 'dzshield-alert@system.local'
     msg['To'] = recipient
@@ -65,6 +101,69 @@ def send_real_email(log_line: str, recipient: str):
         print(f"❌ NATIVE SMTP LOCAL FAILURE (Expected if your ISP blocks port 25 against Google). Check 'inbox' array! Error: {e}")
     print("="*50 + "\n")
 
+
+def validate_registration_payload(payload: RegisterPayload):
+    if len(payload.username.strip()) < 3:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username must be at least 3 characters.")
+    if len(payload.password) < 8:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password must be at least 8 characters.")
+    if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", payload.email):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email is invalid.")
+
+
+@app.post("/api/auth/register")
+def register(payload: RegisterPayload, db: Session = Depends(get_db)):
+    validate_registration_payload(payload)
+    normalized_username = payload.username.strip().lower()
+    normalized_email = payload.email.strip().lower()
+
+    existing_user = db.query(User).filter(func.lower(User.username) == normalized_username).first()
+    if existing_user:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already exists.")
+
+    existing_email = db.query(User).filter(User.email == normalized_email).first()
+    if existing_email:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already exists.")
+
+    user = User(
+        username=normalized_username,
+        email=normalized_email,
+        hashed_password=hash_password(payload.password),
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    token = create_access_token(user.id, user.username)
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {"id": user.id, "username": user.username, "email": user.email},
+    }
+
+
+@app.post("/api/auth/login")
+def login(payload: LoginPayload, db: Session = Depends(get_db)):
+    lookup = payload.username_or_email.strip()
+    lookup_lower = lookup.lower()
+    user = db.query(User).filter(
+        (func.lower(User.username) == lookup_lower) | (User.email == lookup_lower)
+    ).first()
+    if not user or not verify_password(payload.password, user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials.")
+
+    token = create_access_token(user.id, user.username)
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {"id": user.id, "username": user.username, "email": user.email},
+    }
+
+
+@app.get("/api/auth/me")
+def auth_me(current_user: User = Depends(get_current_user)):
+    return {"id": current_user.id, "username": current_user.username, "email": current_user.email}
+
 @app.post("/api/logs/ingest")
 def ingest_log(payload: LogPayload, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     # 1. Save to SQLite for Dashboard viewing
@@ -81,14 +180,34 @@ def ingest_log(payload: LogPayload, background_tasks: BackgroundTasks, db: Sessi
     # 2. Asynchronously process via Agent (Summarize & Vector Store)
     background_tasks.add_task(summarize_and_store_log, payload.log_line, payload.severity)
     
-    # 3. Send Mail natively on Malicious critical
+    # 3. Critical: email + optional n8n webhook (SECURITY_ALERT_WEBHOOK_URL)
     if payload.severity == "Critical":
-        background_tasks.add_task(send_real_email, payload.log_line, "r9440250410@gmail.com")
+        recipient = os.environ.get("CRITICAL_ALERT_EMAIL", "r9440250410@gmail.com")
+        background_tasks.add_task(
+            send_real_email,
+            payload.log_line,
+            recipient,
+            payload.timeline,
+            payload.severity,
+        )
+        background_tasks.add_task(
+            security_notifications.notify_critical_webhook_safe,
+            payload.log_line,
+            payload.timeline,
+            payload.severity,
+        )
     
     return {"status": "success", "id": db_log.id}
 
 @app.get("/api/logs")
-def get_logs(page: int = 1, limit: int = 500, time_range: Optional[str] = None, status_filter: Optional[str] = "All", db: Session = Depends(get_db)):
+def get_logs(
+    page: int = 1,
+    limit: int = 500,
+    time_range: Optional[str] = None,
+    status_filter: Optional[str] = "All",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     # Fetch recent logs for the UI dynamically based on filters
     query = db.query(LogEntry)
     
@@ -120,7 +239,7 @@ def get_logs(page: int = 1, limit: int = 500, time_range: Optional[str] = None, 
     return logs
 
 @app.get("/api/logs/stats")
-def get_stats(db: Session = Depends(get_db)):
+def get_stats(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     total = db.query(LogEntry).count()
     critical = db.query(LogEntry).filter(LogEntry.severity == "Critical").count()
     denied = db.query(LogEntry).filter(LogEntry.status == "Denied").count()
@@ -131,7 +250,12 @@ def get_stats(db: Session = Depends(get_db)):
     }
 
 @app.get("/api/logs/chart")
-def get_chart_data(time_range: Optional[str] = None, status_filter: Optional[str] = "All", db: Session = Depends(get_db)):
+def get_chart_data(
+    time_range: Optional[str] = None,
+    status_filter: Optional[str] = "All",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     query = db.query(LogEntry.timeline, LogEntry.severity, LogEntry.status)
     if status_filter and status_filter != "All":
         if status_filter == "Malicious":
@@ -187,7 +311,7 @@ def get_chart_data(time_range: Optional[str] = None, status_filter: Optional[str
     return return_data
 
 @app.post("/api/chat")
-def chat(payload: ChatQuery):
+def chat(payload: ChatQuery, current_user: User = Depends(get_current_user)):
     response = chat_with_agent(payload.query)
     if isinstance(response, dict):
         return response
